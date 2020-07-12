@@ -1,6 +1,7 @@
 /* SevSeg Counter Example
  
  Copyright 2017 Dean Reading
+ Extended in 2020 by Maciej Zrobek
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -15,7 +16,9 @@
  
  
  This example demonstrates a very simple use of the SevSeg library with a 4
- digit display. It displays a counter that counts up, showing deci-seconds.
+ digit display. It displays a counter that counts up, showing elapsed time
+ in the m.ss.d format (d is for deciseconds).
+ The maximum elapsed time is 10 minutes.
  */
 
 #define MINUTE 60
@@ -46,20 +49,27 @@ void loop() {
   int minutes = 0;
   int tenthsOfSec = 0;
   char displayString[7];
+  static bool overflown = false;
   
-  if (millis() - timer >= 100) {
+  if (!overflown && millis() - timer >= 100) {
     timer += 100;
     deciSeconds++; // 100 milliSeconds is equal to 1 deciSecond
     
-    if (deciSeconds == 10 * MINUTE * 10) { // Reset to 0 after counting for 10 minutes
-      deciSeconds=0;
+    if (deciSeconds == 10 * MINUTE * 10) { 
+      // Display dashes when 10 minutes are reached
+      overflown = true;
+      strcpy(displayString, "----");
     }
-    
-    minutes = deciSeconds / (10 * MINUTE);
-    seconds = (deciSeconds - 10 * MINUTE * minutes) / 10;
-    tenthsOfSec = deciSeconds - 10 * MINUTE * minutes - 10 * seconds;
-
-    sprintf(displayString, "%d.%02d.%d", minutes, seconds, tenthsOfSec); 
+    else
+    {
+      // Convert time in decisecs to mins, secs and decisecs
+      minutes = deciSeconds / (10 * MINUTE);
+      seconds = (deciSeconds - 10 * MINUTE * minutes) / 10;
+      tenthsOfSec = deciSeconds - 10 * MINUTE * minutes - 10 * seconds;
+      
+      sprintf(displayString, "%d.%02d.%d", minutes, seconds, tenthsOfSec);
+    }
+       
     sevseg.setChars(displayString);
   }
 
