@@ -50,47 +50,58 @@ void setup() {
 void loop() {
   static unsigned long timer = millis();
   static int deciSeconds = 0;
-  static int state = ST_READY;
+  static byte pgmState = ST_READY;
+  static byte prevPgmState = ST_READY;
   int seconds = 0;
   int minutes = 0;
   int tenthsOfSec = 0;
   char displayString[7];
-  static byte prevSwitchState = digitalRead(SWITCH_PIN);
-  byte switchState = LOW;
+  byte switchState;
+  static byte prevSwitchState = LOW;
   static bool overflown = false;
 
   //Serial.print(switchState);
   //Serial.println();
-  switch (state)
+  
+  switchState = digitalRead(SWITCH_PIN);
+    
+  switch (pgmState)
   {
     case ST_READY: 
-      if ((switchState = digitalRead(SWITCH_PIN)) != prevSwitchState)
+      strcpy(displayString, STR_ZEROES);
+      if (switchState == HIGH && prevSwitchState == LOW)
       {
-        state = ST_RUNNING;
-        prevSwitchState = switchState;
-      }
-      else
-      {
-        strcpy(displayString, STR_ZEROES);
+        if (pgmState == prevPgmState)
+        {
+          pgmState = ST_RUNNING;
+        }  
+        prevPgmState = pgmState;
       }
       break;
+      
     case ST_RUNNING:
-      if ((switchState = digitalRead(SWITCH_PIN)) != prevSwitchState)
+      strcpy(displayString, "AAAA");
+      if (switchState == HIGH && prevSwitchState == LOW)
       {
-        state = ST_STOPPED;
-        prevSwitchState = switchState;
+        if (pgmState == prevPgmState)
+        {
+          pgmState = ST_STOPPED;
+        }
+        prevPgmState = pgmState;  
       }
-      else
-        strcpy(displayString, "AAAA");
       break;
+      
     case ST_STOPPED:
-      if ((switchState = digitalRead(SWITCH_PIN)) != prevSwitchState)
+      strcpy(displayString, "CCCC");
+      if (switchState == HIGH && prevSwitchState == LOW)
       {
-        state = ST_RUNNING;
-        prevSwitchState = switchState;
+        if (pgmState == prevPgmState)
+        {
+          pgmState = ST_RUNNING;
+        } 
+        prevPgmState = pgmState; 
       }
-      else
-        strcpy(displayString, "CCCC");
+  
       break;  
     case ST_OVERFLOW:
       strcpy(displayString, STR_OVERFLOW);  
@@ -118,11 +129,19 @@ void loop() {
 //       
 //    sevseg.setChars(displayString);
 //  }
-  Serial.print("state="); Serial.print(state); 
-  Serial.print(", switch="); Serial.print(switchState); 
-  Serial.println();
+
+
+ 
+  
+//  Serial.print("state="); Serial.print(pgmState); 
+//  Serial.print(", prevstate="); Serial.print(prevPgmState); 
+//  Serial.print(", switch="); Serial.print(switchState); 
+//  Serial.print(", prevswitch="); Serial.print(prevSwitchState); 
+//  Serial.println();
   sevseg.setChars(displayString);
   sevseg.refreshDisplay(); // Must run repeatedly
+  prevSwitchState = switchState;
+//  delay(500);
 }
 
 /// END ///
