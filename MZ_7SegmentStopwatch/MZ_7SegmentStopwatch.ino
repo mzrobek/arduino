@@ -1,12 +1,11 @@
 /* A simple stopwatch using a 7-segment, 4-digit LED display
  
- Written on 19.07.2020 by Maciej Zrobek
+ Written on 09.11.2020 by Maciej Zrobek
  Based on example by 2017 (C) Dean Reading
  
  The stopwatch can measurre time up to 10 minutes and displays the running time in m.ss.d format (d is for deciseconds)
  Initially the stopwatch displays 0.00.0
  Pressing the switch starts/stops the stopwatch
- When stopped pressing and holding the switch for 3 second resets the stopwatch.
  After 10 minutes are reached the stopwatch displays -.--.-
  
  */
