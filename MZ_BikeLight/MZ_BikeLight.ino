@@ -1,35 +1,62 @@
 /* The Rear Bike Light Simulator
 
-  Written on 05.12.2020 by Maciej Zrobek
+  Written on 13.12.2020 by Maciej Zrobek
 
   This project was inspired by the rear LED light in my bicycle
-  It has several light patterns which are cycled through
-  Initially all LEDs are off - press the switch to start the first pattern
-  Short press of the switch moves to the next pattern
+  It has several light sequences which are cycled through
+  Each sequence consists of several LED patterns which are displayed for a fixed duration
+  Initially all LEDs are off - press the switch to start the first sequence
+  Short press of the switch moves to the next sequence
   Long press of the switch turns all LEDs off and resets the cycle 
 
 */
 
 const byte numLeds              = 3;          // Number of LEDs should be odd
+const byte numSeqs              = 2;          // Number of light sequences
+const byte maxPatterns          = 8;          // Maximum number of patterns in a sequence
+const byte EOS                  = 0XFF;       // The marker of the end of sequence
 const byte ledPins[numLeds]     = {2, 3, 4};  // Pins to which the LEDs are connected via resistors
 const byte switchPin            = 12;         // Pin to which the tact switch is connected
+const int  patternDelay         = 500;        // Delay between patterns in ms
 
-byte currentIndex  = 0;
+// The table of light sequences
+// A pattern in a sequence is coded with bits which correspond to LEDs being turned on or off
+// (e.g. 0B101 means turn the LEDs 1 and 3 on)
+// A sequence ends with the EOS marker
+// The patterns in a sequence are processed every patternDelay millliseconds
+const byte seqs[numSeqs][maxPatterns] = {
+                              {0B100, 0B010, 0B001, 0B000, 0B111, 0B000, EOS},
+                              {0B111, EOS}
+                           };
 
-void switchLedsOff()
+byte currSeq  = 0;
+byte currPattern = 0;
+
+void displayPattern(byte pattern)
 {
-  // The purpose of this function is evident
+  byte mask = 1 << (numLeds - 1);
   for (byte i = 0; i < numLeds; i++)
-  {
-    byte pin = ledPins[i];
-    pinMode(pin, OUTPUT);
-    digitalWrite(pin, LOW);
+  { 
+    if (pattern & mask) 
+      digitalWrite(ledPins[i], HIGH);
+    else
+      digitalWrite(ledPins[i], LOW);
+    mask = mask >> 1;  
   }
-  currentIndex = 0;
+  
+}
+
+void reset()
+{
+  displayPattern(0); // Turn all LEDs off
+  currSeq = 0;
+  currPattern = 0;
 }
 
 void setup() {
-  switchLedsOff();
+  for (byte i = 0; i < numLeds; i++)
+    pinMode(ledPins[i], OUTPUT);
+  reset();
   pinMode(switchPin, INPUT);
   Serial.begin(9600);
 }
@@ -57,7 +84,7 @@ void loop() {
     if (switchPressDuration > 2000)
     {
       // Depressed for long enough to turn the device off
-      switchLedsOff();
+      reset();
       active = false;
     }
   }
@@ -67,32 +94,23 @@ void loop() {
   if (!active)
     return; // Just keep all LEDs dark
 
-  byte pin = ledPins[currentIndex];
+  byte pattern = seqs[currSeq][currPattern];
   unsigned long now = millis();
   Serial.print("now = "); 
   Serial.print(now);
   Serial.print(", loopTime = "); 
   Serial.println(loopTime);
 
-  // This is the implementation of a sample "moving light"
-  // pattern for testing purposes
   // We can't use the delay() function because we want to be able to
   // React to the switch at any moment 
-  if (now - loopTime <= 500)
+  if (now - loopTime > patternDelay)
   {
-    // No time to change the active LED yet
-    digitalWrite(pin, HIGH);
-//    Serial.print("Switching on LED ");
-//    Serial.println(currentIndex);
-  }
-  else
-  {
-    digitalWrite(pin, LOW);
-//    Serial.print("Switching off LED ");
-//    Serial.println(currentIndex);
-    // Time to turn the current LED off and move to the next one
-    if (currentIndex++ == numLeds)
-      currentIndex = 0; // Last LED turned off - wrap around 
+    // Time to update the pattern
+    displayPattern(pattern);
+    // Move on to the next pattern
+    pattern = seqs[currSeq][++currPattern];
+    if (pattern == EOS)
+      currPattern = 0; // Last pattern in the sequence - wrap around 
     loopTime = now;  
   }
 
