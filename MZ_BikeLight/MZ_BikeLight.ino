@@ -1,23 +1,23 @@
 /* The Rear Bike Light Simulator
 
-  Written on 13.12.2020 by Maciej Zrobek
+  Written on 20.12.2020 by Maciej Zrobek
 
   This project was inspired by the rear LED light in my bicycle
   It has several light sequences which are cycled through
   Each sequence consists of several LED patterns which are displayed for a fixed duration
   Initially all LEDs are off - press the switch to start the first sequence
   Short press of the switch moves to the next sequence
-  Long press of the switch turns all LEDs off and resets the cycle 
+  Long press of the switch turns all LEDs off and resets the cycle
 
 */
 
 const byte numLeds              = 3;          // Number of LEDs should be odd
-const byte numSeqs              = 2;          // Number of light sequences
-const byte maxPatterns          = 8;          // Maximum number of patterns in a sequence
+const byte numSeqs              = 5;          // Number of light sequences
+const byte maxPatterns          = 15;         // Maximum number of patterns in a sequence
 const byte EOS                  = 0XFF;       // The marker of the end of sequence
 const byte ledPins[numLeds]     = {2, 3, 4};  // Pins to which the LEDs are connected via resistors
 const byte switchPin            = 12;         // Pin to which the tact switch is connected
-const int  patternDelay         = 500;        // Delay between patterns in ms
+const int  patternDelay         = 200;        // Delay between patterns in ms
 
 // The table of light sequences
 // A pattern in a sequence is coded with bits which correspond to LEDs being turned on or off
@@ -25,9 +25,13 @@ const int  patternDelay         = 500;        // Delay between patterns in ms
 // A sequence ends with the EOS marker
 // The patterns in a sequence are processed every patternDelay millliseconds
 const byte seqs[numSeqs][maxPatterns] = {
-                              {0B100, 0B010, 0B001, 0B000, 0B111, 0B000, EOS},
-                              {0B111, EOS}
-                           };
+    {0B100, 0B010, 0B001, EOS},         // Moving light
+    {0B111, 0B000, EOS},                // All blinking
+    {0B101, 0B101, 0B000, 0B000, 0B101, 0B101, 0B000, 0B000, 0B010, 0B000, 0B010, 0B000, 0B010, 0B000, EOS}, // Fancy blink 1
+    {0B101, 0B010, 0B101, 0B000, EOS},  // Fancy blink 2
+    {0B111, EOS}                        // All on
+//  {0B100,EOS}, {0B010, EOS}, {0B001, EOS} 
+};
 
 byte currSeq  = 0;
 byte currPattern = 0;
@@ -36,14 +40,14 @@ void displayPattern(byte pattern)
 {
   byte mask = 1 << (numLeds - 1);
   for (byte i = 0; i < numLeds; i++)
-  { 
-    if (pattern & mask) 
+  {
+    if (pattern & mask)
       digitalWrite(ledPins[i], HIGH);
     else
       digitalWrite(ledPins[i], LOW);
-    mask = mask >> 1;  
+    mask = mask >> 1;
   }
-  
+
 }
 
 void reset()
@@ -69,20 +73,37 @@ void loop() {
   static unsigned long loopTime = 0UL;          // The point in time when the LED state was last updated
 
   int switchState = digitalRead(switchPin);
-  //  Serial.print("Switch state=");
-  //  Serial.println(switchState ? "HIGH" : "LOW");
+//  Serial.print("Switch state=");
+//  Serial.println(switchState ? "HIGH" : "LOW");
 
   if (switchState == HIGH && prevSwitchState == LOW)
   {
-    // Turn the device on
+
+    // This delay prevents immediate moving to the next seq
+    delay(100); 
+    if (!active)
+    {
+      active = true; // Turn the device on
+      //Serial.println("*** BREAKPOINT 1 ***");
+    }
+    else
+    {
+      // Move on to the next sequence
+      // Wrap around if it was the last sequence
+      //Serial.println("*** BREAKPOINT 2 ***");
+      if (++currSeq == numSeqs)
+        currSeq = 0;
+      currPattern  = 0;
+    }
+    
     switchPressTime = loopTime = millis();
-    active = true;
   }
   else if (switchState == HIGH && prevSwitchState == HIGH)
   {
     unsigned long switchPressDuration = millis() - switchPressTime; // Check for how long the switch has been depressed
     if (switchPressDuration > 2000)
     {
+      //Serial.println("*** BREAKPOINT 3 ***");
       // Depressed for long enough to turn the device off
       reset();
       active = false;
@@ -96,13 +117,13 @@ void loop() {
 
   byte pattern = seqs[currSeq][currPattern];
   unsigned long now = millis();
-  Serial.print("now = "); 
-  Serial.print(now);
-  Serial.print(", loopTime = "); 
-  Serial.println(loopTime);
+  //  Serial.print("now = ");
+  //  Serial.print(now);
+  //  Serial.print(", loopTime = ");
+  //  Serial.println(loopTime);
 
   // We can't use the delay() function because we want to be able to
-  // React to the switch at any moment 
+  // React to the switch at any moment
   if (now - loopTime > patternDelay)
   {
     // Time to update the pattern
@@ -110,8 +131,8 @@ void loop() {
     // Move on to the next pattern
     pattern = seqs[currSeq][++currPattern];
     if (pattern == EOS)
-      currPattern = 0; // Last pattern in the sequence - wrap around 
-    loopTime = now;  
+      currPattern = 0; // Last pattern in the sequence - wrap around
+    loopTime = now;
   }
 
 }
