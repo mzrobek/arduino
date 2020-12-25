@@ -1,6 +1,6 @@
 /* The Rear Bike Light Simulator
 
-  Written on 20.12.2020 by Maciej Zrobek
+  Written on 25.12.2020 by Maciej Zrobek
 
   This project was inspired by the rear LED light in my bicycle
   It has several light sequences which are cycled through
@@ -24,13 +24,12 @@ const int  patternDelay         = 200;        // Delay between patterns in ms
 // (e.g. 0B101 means turn the LEDs 1 and 3 on)
 // A sequence ends with the EOS marker
 // The patterns in a sequence are processed every patternDelay millliseconds
-const byte seqs[numSeqs][maxPatterns] = {
+const byte seqs[numSeqs][maxPatterns] = { 
     {0B100, 0B010, 0B001, EOS},         // Moving light
     {0B111, 0B000, EOS},                // All blinking
     {0B101, 0B101, 0B000, 0B000, 0B101, 0B101, 0B000, 0B000, 0B010, 0B000, 0B010, 0B000, 0B010, 0B000, EOS}, // Fancy blink 1
     {0B101, 0B010, 0B101, 0B000, EOS},  // Fancy blink 2
     {0B111, EOS}                        // All on
-//  {0B100,EOS}, {0B010, EOS}, {0B001, EOS} 
 };
 
 byte currSeq  = 0;
@@ -82,10 +81,7 @@ void loop() {
     // This delay prevents immediate moving to the next seq
     delay(100); 
     if (!active)
-    {
       active = true; // Turn the device on
-      //Serial.println("*** BREAKPOINT 1 ***");
-    }
     else
     {
       // Move on to the next sequence
@@ -103,7 +99,6 @@ void loop() {
     unsigned long switchPressDuration = millis() - switchPressTime; // Check for how long the switch has been depressed
     if (switchPressDuration > 2000)
     {
-      //Serial.println("*** BREAKPOINT 3 ***");
       // Depressed for long enough to turn the device off
       reset();
       active = false;
@@ -117,11 +112,6 @@ void loop() {
 
   byte pattern = seqs[currSeq][currPattern];
   unsigned long now = millis();
-  //  Serial.print("now = ");
-  //  Serial.print(now);
-  //  Serial.print(", loopTime = ");
-  //  Serial.println(loopTime);
-
   // We can't use the delay() function because we want to be able to
   // React to the switch at any moment
   if (now - loopTime > patternDelay)
@@ -134,5 +124,4 @@ void loop() {
       currPattern = 0; // Last pattern in the sequence - wrap around
     loopTime = now;
   }
-
 }
