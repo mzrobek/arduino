@@ -19,10 +19,12 @@
 #define NUM_DEVICES             1
 #define NUM_ROWS                8
 #define NUM_COLS                8
-#define DELAY_BETWEEN_CHARS 300 // The default delay after displaying the matrix in msecs
+#define DELAY_BETWEEN_CHARS     200 // The default delay after displaying the matrix in msecs
+#define DELAY_BETWEEN_SHIFTS    15
 // Display effects - more to come in the future
 #define DISP_MODE_APPEAR      0  // Just display
 #define DISP_MODE_SLIDE_LEFT  1  // Slide in from right to left
+#define DISP_MODE_SLIDE_RIGHT 2  // Slide in from left to right
 
 LedControl lc = LedControl(PIN_DIN, PIN_CLK, PIN_CS, NUM_DEVICES);
 
@@ -78,13 +80,27 @@ void displayMatrix(int addr, const byte rows[], byte dispMode = DISP_MODE_APPEAR
       {
         for (col = 0; col < NUM_COLS; col++)
         {
-          byte bitmap = rows[row] >> (NUM_COLS + col - 1);
-          lc.setRow(addr, row, bitmap);
-          delay(100);
-          lc.setRow(addr, row, 0);
+          // Each row must be initially shifted right by NUM_COLS - 1 bits
+          byte bitmap = rows[row] >> (NUM_COLS - col - 1); // Shift the row left by 1 bit
+          if (bitmap != 0) // Skip displaying empty rows
+            lc.setRow(addr, row, bitmap); // Display the shifted row
+          delay(DELAY_BETWEEN_SHIFTS);
         } 
       }
       break;
+    case DISP_MODE_SLIDE_RIGHT:
+      for (row = 0; row < NUM_ROWS; row++)
+      {
+        for (col = 0; col < NUM_COLS; col++)
+        {
+          // Each row must be initially shifted left by NUM_COLS - 1 bits
+          byte bitmap = rows[row] << (NUM_COLS - col - 1); // Shift the row left by 1 bit
+          if (bitmap != 0) // Skip displaying empty rows
+            lc.setRow(addr, row, bitmap); // Display the shifted row
+          delay(DELAY_BETWEEN_SHIFTS);
+        } 
+      }
+      break;      
     case DISP_MODE_APPEAR:
     default:
       for (row = 0; row < NUM_ROWS; row++)
@@ -109,7 +125,23 @@ void displayString(int addr, const byte* text[], unsigned int delayTime = DELAY_
 void loop() 
 {
   // put your main code here, to run repeatedly:
-  displayString(0, theMessage, DELAY_BETWEEN_CHARS, DISP_MODE_SLIDE_LEFT);
+  displayString(0, theMessage, 300, DISP_MODE_APPEAR);
+  lc.clearDisplay(0);
   displayMatrix(0, theGrid, DISP_MODE_APPEAR);
   delay(2 * DELAY_BETWEEN_CHARS);
+  lc.clearDisplay(0);
+  
+  displayString(0, theMessage, DELAY_BETWEEN_CHARS, DISP_MODE_SLIDE_LEFT);
+  delay(2 * DELAY_BETWEEN_CHARS);
+  lc.clearDisplay(0);
+  displayMatrix(0, theGrid, DISP_MODE_APPEAR);
+  delay(2 * DELAY_BETWEEN_CHARS);
+  lc.clearDisplay(0);
+
+  displayString(0, theMessage, DELAY_BETWEEN_CHARS, DISP_MODE_SLIDE_RIGHT);
+  delay(2 * DELAY_BETWEEN_CHARS);
+  lc.clearDisplay(0);
+  displayMatrix(0, theGrid, DISP_MODE_APPEAR);
+  delay(2 * DELAY_BETWEEN_CHARS);
+  lc.clearDisplay(0);
 }
