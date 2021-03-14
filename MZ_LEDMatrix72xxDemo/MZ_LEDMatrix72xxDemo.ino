@@ -16,10 +16,13 @@
 #define PIN_DIN                 2
 #define PIN_CS                  3
 #define PIN_CLK                 4
-#define NUM_DEVICES 1
+#define NUM_DEVICES             1
+#define NUM_ROWS                8
+#define NUM_COLS                8
 #define DELAY_BETWEEN_CHARS 300 // The default delay after displaying the matrix in msecs
-// Displat effects - more to come in the future
-#define DISP_MODE_APPEAR 0  // Just display
+// Display effects - more to come in the future
+#define DISP_MODE_APPEAR      0  // Just display
+#define DISP_MODE_SLIDE_LEFT  1  // Slide in from right to left
 
 LedControl lc = LedControl(PIN_DIN, PIN_CLK, PIN_CS, NUM_DEVICES);
 
@@ -65,11 +68,26 @@ void setup()
 // Display a single character
 void displayMatrix(int addr, const byte rows[], byte dispMode = DISP_MODE_APPEAR)
 {
+  byte row = 0;
+  byte col = 0;
+  
   switch (dispMode)
   {
+    case DISP_MODE_SLIDE_LEFT:
+      for (row = 0; row < NUM_ROWS; row++)
+      {
+        for (col = 0; col < NUM_COLS; col++)
+        {
+          byte bitmap = rows[row] >> (NUM_COLS + col - 1);
+          lc.setRow(addr, row, bitmap);
+          delay(100);
+          lc.setRow(addr, row, 0);
+        } 
+      }
+      break;
     case DISP_MODE_APPEAR:
     default:
-      for (int row = 0; row < 8; row++)
+      for (row = 0; row < NUM_ROWS; row++)
         lc.setRow(addr, row, rows[row]);
       break;
   }
@@ -91,7 +109,7 @@ void displayString(int addr, const byte* text[], unsigned int delayTime = DELAY_
 void loop() 
 {
   // put your main code here, to run repeatedly:
-  displayString(0, theMessage, DELAY_BETWEEN_CHARS, DISP_MODE_APPEAR);
+  displayString(0, theMessage, DELAY_BETWEEN_CHARS, DISP_MODE_SLIDE_LEFT);
   displayMatrix(0, theGrid, DISP_MODE_APPEAR);
   delay(2 * DELAY_BETWEEN_CHARS);
 }
