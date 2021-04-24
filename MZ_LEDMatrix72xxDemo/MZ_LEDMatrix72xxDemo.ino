@@ -1,10 +1,10 @@
 /***************************************************************
  *********** LED Matrix Display Demo         *******************
  ***************************************************************
-    Written by Maciej Zrobek, 14.03.2021
+    Written by Maciej Zrobek, 24.04.2021
 
     Display a text on a MAX72xx based 8x8 LED matrix
-
+    Use several display effects in sequence
     Components:
     A 8x8 LED matrix with a MAX72xx chip
  ****************************************************************/
@@ -25,14 +25,16 @@
 #define DISP_MODE_APPEAR      0  // Just display
 #define DISP_MODE_SLIDE_LEFT  1  // Slide in from right to left
 #define DISP_MODE_SLIDE_RIGHT 2  // Slide in from left to right
+#define DISP_MODE_SLIDE_UP    3  // Slide in from bottom upwards
+#define DISP_MODE_SLIDE_DOWN  4  // Slide in from top downwards
 
 LedControl lc = LedControl(PIN_DIN, PIN_CLK, PIN_CS, NUM_DEVICES);
 
 // The string to be displayed must be coded as a NULL-terminated 2-dimensional array of bytes
 // with each element being one character to be displayed which in turn is coded as an array of bytes (rows)
 
-const byte theGrid[] = 
-{  // A checkered flag to be used as a separator
+const byte theGrid[] =
+{ // A checkered flag to be used as a separator
   0B10101010,
   0B01010101,
   0B10101010,
@@ -45,7 +47,7 @@ const byte theGrid[] =
 
 // Some characters
 // Use https://www.riyas.org/2013/12/online-led-matrix-font-generator-with.html to code the byte values
-// 
+// Rows of the characters go from top down (element 0 of the table is the topmost row of the matrix)
 const byte char_J[] =           {0x00, 0x3c, 0x04, 0x04, 0x04, 0x04, 0x24, 0x18};
 const byte char_E[] =           {0x00, 0x3c, 0x20, 0x20, 0x38, 0x20, 0x20, 0x3c};
 const byte char_B[] =           {0x00, 0x38, 0x24, 0x24, 0x38, 0x24, 0x24, 0x38};
@@ -59,7 +61,7 @@ const byte char_S[] =           {0x00, 0x1c, 0x20, 0x20, 0x18, 0x04, 0x04, 0x38}
 const byte* theMessage[] = {char_J, char_E, char_B, char_A, char_c_Accented, char_P, char_i, char_S, NULL};
 
 
-void setup() 
+void setup()
 {
   // put your setup code here, to run once:
   lc.shutdown(0, false);
@@ -68,11 +70,11 @@ void setup()
 }
 
 // Display a single character
-void displayMatrix(int addr, const byte rows[], byte dispMode = DISP_MODE_APPEAR)
+void displayMatrix(int addr, const byte rows[], byte dispMode)
 {
   byte row = 0;
   byte col = 0;
-  
+
   switch (dispMode)
   {
     case DISP_MODE_SLIDE_LEFT:
@@ -85,7 +87,7 @@ void displayMatrix(int addr, const byte rows[], byte dispMode = DISP_MODE_APPEAR
           if (bitmap != 0) // Skip displaying empty rows
             lc.setRow(addr, row, bitmap); // Display the shifted row
           delay(DELAY_BETWEEN_SHIFTS);
-        } 
+        }
       }
       break;
     case DISP_MODE_SLIDE_RIGHT:
@@ -98,9 +100,34 @@ void displayMatrix(int addr, const byte rows[], byte dispMode = DISP_MODE_APPEAR
           if (bitmap != 0) // Skip displaying empty rows
             lc.setRow(addr, row, bitmap); // Display the shifted row
           delay(DELAY_BETWEEN_SHIFTS);
-        } 
+        }
       }
-      break;      
+      break;
+    case DISP_MODE_SLIDE_UP:
+      // Start drawing with the topmost row at the bottom
+      for (row = 0; row < NUM_ROWS; row++)
+      {
+        // Shift all remaining rows up
+        for (int row2 = 0; row2 <= row; row2++)
+        {
+          int pos = NUM_ROWS - row2 - 1;
+          lc.setRow(addr, pos, rows[pos]);
+          delay(DELAY_BETWEEN_SHIFTS);
+        }
+      }
+      break;
+    case DISP_MODE_SLIDE_DOWN:
+      // Start drawing with the last row at the top
+      for (row = 0; row < NUM_ROWS; row++)
+      {
+        // Shift all remaining rows down
+        for (int row2 = 0; row2 <= row; row2++)
+        {
+          lc.setRow(addr, row2, rows[row2]);
+          delay(DELAY_BETWEEN_SHIFTS);
+        }
+      }
+      break;
     case DISP_MODE_APPEAR:
     default:
       for (row = 0; row < NUM_ROWS; row++)
@@ -110,38 +137,32 @@ void displayMatrix(int addr, const byte rows[], byte dispMode = DISP_MODE_APPEAR
 }
 
 // Display the entire string
-void displayString(int addr, const byte* text[], unsigned int delayTime = DELAY_BETWEEN_CHARS, byte dispMode = DISP_MODE_APPEAR)
+void displayString(int addr, const byte* text[], byte dispMode)
 {
   const byte** ptr = text;
   while (*ptr != NULL)
   {
     displayMatrix(addr, *ptr, dispMode);
-    delay(delayTime);
+    delay(DELAY_BETWEEN_CHARS);
     lc.clearDisplay(addr);
     ptr++;
   }
 }
 
-void loop() 
+void displaySequence(byte dispMode)
 {
-  // put your main code here, to run repeatedly:
-  displayString(0, theMessage, 300, DISP_MODE_APPEAR);
+  displayString(0, theMessage, dispMode);
   lc.clearDisplay(0);
   displayMatrix(0, theGrid, DISP_MODE_APPEAR);
   delay(2 * DELAY_BETWEEN_CHARS);
-  lc.clearDisplay(0);
-  
-  displayString(0, theMessage, DELAY_BETWEEN_CHARS, DISP_MODE_SLIDE_LEFT);
-  delay(2 * DELAY_BETWEEN_CHARS);
-  lc.clearDisplay(0);
-  displayMatrix(0, theGrid, DISP_MODE_APPEAR);
-  delay(2 * DELAY_BETWEEN_CHARS);
-  lc.clearDisplay(0);
+  lc.clearDisplay(0);  
+}
 
-  displayString(0, theMessage, DELAY_BETWEEN_CHARS, DISP_MODE_SLIDE_RIGHT);
-  delay(2 * DELAY_BETWEEN_CHARS);
-  lc.clearDisplay(0);
-  displayMatrix(0, theGrid, DISP_MODE_APPEAR);
-  delay(2 * DELAY_BETWEEN_CHARS);
-  lc.clearDisplay(0);
+void loop()
+{
+    displaySequence(DISP_MODE_APPEAR);
+    displaySequence(DISP_MODE_SLIDE_LEFT);
+    displaySequence(DISP_MODE_SLIDE_RIGHT);
+    displaySequence(DISP_MODE_SLIDE_UP);
+    displaySequence(DISP_MODE_SLIDE_DOWN);
 }
