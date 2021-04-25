@@ -1,7 +1,7 @@
 /***************************************************************
  *********** LED Matrix Display Demo         *******************
  ***************************************************************
-    Written by Maciej Zrobek, 24.04.2021
+    Written by Maciej Zrobek, 25.04.2021
 
     Display a text on a MAX72xx based 8x8 LED matrix
     Use several display effects in sequence
